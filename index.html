@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>호산나 찬양대 프리젠터</title>
-    <!-- 인터넷 탭에 음표(🎵) 아이콘을 띄워주는 코드 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
     
     <style>
@@ -71,23 +70,38 @@
             display: none;
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: black; color: white;
-            text-align: center; 
+            
+            flex-direction: column;
             justify-content: center; 
             align-items: center;
+            
             font-weight: bold;
             line-height: 1.4;
             z-index: 9999;
             padding: 50px;
             box-sizing: border-box;
             
-            /* 마우스/터치 선택 방지 및 포인터 설정 */
             user-select: none;
             cursor: pointer;
-            
-            /* 문맥 맞춤 자동 줄바꿈 기술 */
+        }
+
+        #slide-text {
+            text-align: center;
             word-break: keep-all; 
             overflow-wrap: break-word;
             text-wrap: balance; 
+            width: 100%;
+        }
+
+        #page-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.3);
+            font-weight: normal;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
         }
     </style>
 </head>
@@ -96,10 +110,10 @@
 <div id="edit-mode">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     <p class="description">
-        <b>[엔터]</b>를 치면 새 화면으로 넘어갑니다. (강제 줄바꿈: <b>//</b>, 단어 묶기: <b>_</b>)<br>
-        <b>[화면 넘기기]</b> 무선 포인터, 마우스 휠, 터치(화면 좌측 30% 이전 / 우측 70% 다음) 지원<br>
-        <b>[긴급 복귀]</b> 마우스나 포인터, 화면 터치를 <b>빠르게 3번 다다닥!</b> 누르면 <b>첫 페이지</b>로 즉시 복귀<br>
-        <b>[기타 조작]</b> <b>ESC</b>: 종료, <b>+ / -</b> : 글자 크기 실시간 조절
+        <b>[엔터]</b>: 새 화면으로 넘김 (강제 줄바꿈: <b>//</b>, 단어 묶기: <b>_</b>)<br>
+        <b>[모바일 조작]</b> 좌우/상하 <b>스와이프</b> 지원<br>
+        <b>[터치 조작]</b> <b>1번</b> 탭: 다음 / <b>2번 다닥!</b>: 이전 / <b>3번 다다닥!</b>: 처음으로<br>
+        <b>[PC 조작]</b> 무선 포인터, 마우스 휠, <b>ESC</b>(종료), <b>+ / -</b> (글자 크기 조절)
     </p>
 
     <div class="controls">
@@ -119,17 +133,32 @@
     <input type="file" id="file-input" accept=".txt" onchange="loadLyrics(event)">
 </div>
 
-<div id="presentation-mode"></div>
+<div id="presentation-mode">
+    <div id="slide-text"></div>
+    <div id="page-number"></div>
+</div>
 
 <script>
     let slides = [];
     let currentSlideIndex = 0;
     let currentFontSize = 8; 
-    let actionTimes = [];
     let wheelCooldown = false; 
+    
+    // 탭 감지용 변수
+    let tapCount = 0;
+    let tapTimeout;
+
+    // 스와이프 감지용 변수
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let isSwiping = false;
     
     const editMode = document.getElementById('edit-mode');
     const presentationMode = document.getElementById('presentation-mode');
+    const slideText = document.getElementById('slide-text');
+    const pageNumber = document.getElementById('page-number');
     const lyricsInput = document.getElementById('lyrics-input');
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeLabel = document.getElementById('font-size-label');
@@ -141,17 +170,6 @@
 
     function escapeHtml(text) {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function checkTripleAction() {
-        const now = Date.now();
-        actionTimes.push(now);
-        actionTimes = actionTimes.filter(time => now - time < 800); 
-        if (actionTimes.length >= 3) {
-            actionTimes = []; 
-            return true;
-        }
-        return false;
     }
 
     function goToFirstSlide() {
@@ -176,10 +194,11 @@
         }
 
         currentSlideIndex = 0;
-        actionTimes = []; 
+        tapCount = 0; 
+        isSwiping = false;
         
         currentFontSize = parseFloat(fontSizeSlider.value);
-        presentationMode.style.fontSize = currentFontSize + 'vw';
+        slideText.style.fontSize = currentFontSize + 'vw';
 
         editMode.style.display = 'none';
         presentationMode.style.display = 'flex';
@@ -195,7 +214,9 @@
             let safeText = escapeHtml(slides[currentSlideIndex]);
             safeText = safeText.replace(/\/\//g, '<br>');
             safeText = safeText.replace(/_/g, '&nbsp;');
-            presentationMode.innerHTML = safeText;
+            slideText.innerHTML = safeText;
+
+            pageNumber.innerText = (currentSlideIndex + 1) + " / " + slides.length;
         }
     }
 
@@ -207,34 +228,87 @@
         }
     }
 
-    // --- 마우스 클릭 & 모바일 터치 이벤트 (화면 분할) ---
+    // --- 📱 터치 스와이프 기능 ---
+    presentationMode.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        isSwiping = false; // 새 터치 시작 시 초기화
+    }, {passive: true});
+
+    presentationMode.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+    });
+
+    function handleSwipe() {
+        const swipeThreshold = 50; // 이 픽셀 이상 움직여야 스와이프로 인정
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // 스와이프로 판정된 경우
+        if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
+            isSwiping = true; 
+            
+            // 가로 이동이 더 큰 경우 (좌우 스와이프)
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX < 0) {
+                    // 왼쪽으로 쓱 밀었을 때 (다음)
+                    if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
+                } else {
+                    // 오른쪽으로 쓱 밀었을 때 (이전)
+                    if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
+                }
+            } 
+            // 세로 이동이 더 큰 경우 (상하 스와이프)
+            else {
+                if (deltaY < 0) {
+                    // 위로 쓱 밀었을 때 (다음)
+                    if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
+                } else {
+                    // 아래로 쓱 밀었을 때 (이전)
+                    if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
+                }
+            }
+        }
+    }
+
+    // --- 🖱️ 마우스 클릭 & 탭 기능 ---
     presentationMode.addEventListener('click', (e) => {
-        if (checkTripleAction()) {
-            goToFirstSlide();
+        // 방금 한 동작이 스와이프였다면 탭으로 처리하지 않고 무시
+        if (isSwiping) {
+            isSwiping = false;
             return;
         }
-        
-        // 클릭/터치한 X 좌표 확인
-        const clickX = e.clientX;
-        const screenWidth = window.innerWidth;
 
-        // 화면 왼쪽 30% 터치 시 이전 슬라이드
-        if (clickX < screenWidth * 0.3) {
-            if (currentSlideIndex > 0) {
-                currentSlideIndex--;
-                updateSlide();
-            }
+        tapCount++;
+        
+        if (tapCount === 1) {
+            tapTimeout = setTimeout(() => {
+                if (currentSlideIndex < slides.length - 1) {
+                    currentSlideIndex++;
+                    updateSlide();
+                }
+                tapCount = 0; 
+            }, 300); 
         } 
-        // 나머지 오른쪽 영역 터치 시 다음 슬라이드
-        else {
-            if (currentSlideIndex < slides.length - 1) {
-                currentSlideIndex++;
-                updateSlide();
-            }
+        else if (tapCount === 2) {
+            clearTimeout(tapTimeout);
+            tapTimeout = setTimeout(() => {
+                if (currentSlideIndex > 0) {
+                    currentSlideIndex--;
+                    updateSlide();
+                }
+                tapCount = 0; 
+            }, 300);
+        } 
+        else if (tapCount >= 3) {
+            clearTimeout(tapTimeout);
+            goToFirstSlide();
+            tapCount = 0; 
         }
     });
 
-    // 데스크톱 환경에서 우클릭 시 메뉴 뜨는 것 방지
     presentationMode.addEventListener('contextmenu', (e) => {
         e.preventDefault(); 
     });
@@ -256,9 +330,7 @@
             }
         }
         
-        setTimeout(() => {
-            wheelCooldown = false;
-        }, 200); 
+        setTimeout(() => { wheelCooldown = false; }, 200); 
     });
 
     // --- 키보드 및 무선 포인터 이벤트 ---
@@ -266,22 +338,18 @@
         if (presentationMode.style.display === 'flex') {
             if (e.key === '+' || e.key === '=') {
                 if (currentFontSize < 15) currentFontSize += 0.5;
-                presentationMode.style.fontSize = currentFontSize + 'vw';
+                slideText.style.fontSize = currentFontSize + 'vw';
                 fontSizeSlider.value = currentFontSize;
                 updateFontSizeLabel();
             }
             else if (e.key === '-' || e.key === '_') {
                 if (currentFontSize > 3) currentFontSize -= 0.5;
-                presentationMode.style.fontSize = currentFontSize + 'vw';
+                slideText.style.fontSize = currentFontSize + 'vw';
                 fontSizeSlider.value = currentFontSize;
                 updateFontSizeLabel();
             }
             else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') {
                 e.preventDefault(); 
-                if (checkTripleAction()) {
-                    goToFirstSlide();
-                    return;
-                }
                 if (currentSlideIndex < slides.length - 1) {
                     currentSlideIndex++;
                     updateSlide();
@@ -289,10 +357,6 @@
             }
             else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                 e.preventDefault(); 
-                if (checkTripleAction()) {
-                    goToFirstSlide();
-                    return;
-                }
                 if (currentSlideIndex > 0) {
                     currentSlideIndex--;
                     updateSlide();

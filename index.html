@@ -21,7 +21,17 @@
             border-radius: 10px; 
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        h2 { color: #333; margin-top: 0; }
+        
+        /* 메인 표지 이미지 (앱 상단 배너용) */
+        #app-banner {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h2 { color: #333; margin-top: 0; display: none; /* 이미지가 있으므로 기존 텍스트 제목은 숨김 */ }
         .description { color: #666; margin-bottom: 20px; line-height: 1.5; }
         
         .controls {
@@ -85,7 +95,18 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
             user-select: none;
-            cursor: pointer;
+            cursor: none; /* 마우스 포인트 숨김 */
+        }
+
+        /* 💡 전체화면 시 나오는 표지 이미지 스타일 */
+        #cover-image-fs {
+            display: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 원본 비율을 유지하며 꽉 차게 */
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 1;
         }
 
         #exit-btn {
@@ -109,27 +130,32 @@
             width: 100%;
             padding: 0 40px; 
             box-sizing: border-box;
+            z-index: 2; /* 이미지 위로 올라오도록 설정 */
         }
 
         #page-number {
             position: absolute;
             bottom: max(30px, env(safe-area-inset-bottom));
             right: max(40px, env(safe-area-inset-right));
-            font-size: 24px;
+            font-size: 48px; 
             color: rgba(255, 255, 255, 0.3);
             font-weight: normal;
             font-family: Arial, sans-serif;
             letter-spacing: 2px;
+            z-index: 2;
         }
     </style>
 </head>
 <body>
 
 <div id="edit-mode">
+    <!-- 💡 앱 실행 시 나타나는 메인 로고/배너 이미지 -->
+    <img id="app-banner" src="메인2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
+    
     <p class="description">
         <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
-        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 버튼을 누르면 <b>다시 전체화면으로 시작</b>됩니다.
+        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 버튼을 누르면 다시 전체화면으로 시작됩니다.
     </p>
 
     <div class="controls">
@@ -152,6 +178,10 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
+    
+    <!-- 💡 전체화면용 메인 표지 이미지 -->
+    <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
+    
     <div id="slide-text"></div>
     <div id="page-number"></div>
 </div>
@@ -170,19 +200,18 @@
     const presentationMode = document.getElementById('presentation-mode');
     const slideText = document.getElementById('slide-text');
     const pageNumber = document.getElementById('page-number');
+    const coverImageFS = document.getElementById('cover-image-fs');
     const lyricsInput = document.getElementById('lyrics-input');
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeLabel = document.getElementById('font-size-label');
     const saveStatus = document.getElementById('save-status');
 
-    // --- 앱 시작 시 가사와 폰트 크기 불러오기 ---
     window.onload = function() {
         const savedLyrics = localStorage.getItem('hosannaLyrics');
         if (savedLyrics) {
             lyricsInput.value = savedLyrics;
         }
         
-        // 💡 새 기능: 저장된 폰트 크기 불러오기
         const savedFontSize = localStorage.getItem('hosannaFontSize');
         if (savedFontSize) {
             currentFontSize = parseFloat(savedFontSize);
@@ -197,11 +226,10 @@
         setTimeout(() => { saveStatus.innerText = ""; }, 2000);
     });
 
-    // 💡 새 기능: 폰트 크기가 변경될 때마다 자동 저장
     function updateFontSizeLabel() {
         currentFontSize = parseFloat(fontSizeSlider.value);
         fontSizeLabel.innerText = currentFontSize;
-        localStorage.setItem('hosannaFontSize', currentFontSize); // 기기에 영구 기억
+        localStorage.setItem('hosannaFontSize', currentFontSize); 
     }
 
     function escapeHtml(text) {
@@ -218,6 +246,9 @@
         
         slides = text.split('\n').map(line => line.trim()).filter(line => line !== '');
         if (slides.length === 0) return;
+
+        // 💡 핵심 기능: 슬라이드 목록 맨 앞에 '커버 이미지'를 위한 특별한 신호를 넣습니다.
+        slides.unshift('__COVER_IMAGE__');
 
         currentSlideIndex = 0; tapCount = 0; isSwiping = false;
         currentFontSize = parseFloat(fontSizeSlider.value);
@@ -236,11 +267,28 @@
 
     function updateSlide() {
         if (slides.length > 0) {
-            let safeText = escapeHtml(slides[currentSlideIndex]);
-            safeText = safeText.replace(/\/\//g, '<br>');
-            safeText = safeText.replace(/_/g, '&nbsp;');
-            slideText.innerHTML = safeText;
-            pageNumber.innerText = (currentSlideIndex + 1) + " / " + slides.length;
+            const currentContent = slides[currentSlideIndex];
+
+            // 1. 현재 화면이 표지 이미지일 때
+            if (currentContent === '__COVER_IMAGE__') {
+                coverImageFS.style.display = 'block'; // 이미지 표시
+                slideText.style.display = 'none';     // 가사 숨김
+                pageNumber.style.display = 'none';    // 페이지 번호 숨김
+            } 
+            // 2. 현재 화면이 가사일 때
+            else {
+                coverImageFS.style.display = 'none';  // 이미지 숨김
+                slideText.style.display = 'block';    // 가사 표시
+                pageNumber.style.display = 'block';   // 페이지 번호 표시
+
+                let safeText = escapeHtml(currentContent);
+                safeText = safeText.replace(/\/\//g, '<br>');
+                safeText = safeText.replace(/_/g, '&nbsp;');
+                slideText.innerHTML = safeText;
+
+                // 커버 이미지를 제외하고 실제 가사의 페이지 번호를 계산합니다.
+                pageNumber.innerText = currentSlideIndex + " / " + (slides.length - 1);
+            }
         }
     }
 
@@ -254,7 +302,6 @@
         }
     }
 
-    // --- 스와이프 및 마우스 로직 ---
     presentationMode.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -314,9 +361,7 @@
         setTimeout(() => { wheelCooldown = false; }, 200); 
     });
 
-    // --- 💡 핵심 기능: 키보드 & 무선 포인터 동작 업그레이드 ---
     document.addEventListener('keydown', (e) => {
-        // 1. 전체 화면 실행 중일 때
         if (presentationMode.style.display === 'flex') {
             if (e.key === '+' || e.key === '=') {
                 if (currentFontSize < 15) currentFontSize += 0.5;
@@ -334,13 +379,8 @@
                 exitPresentation(); 
             }
         } 
-        // 2. 전체 화면이 꺼져있는(편집) 상태일 때 포인터 재시작 기능!
         else {
-            // 현재 사용자가 글자 입력창(textarea)을 클릭해서 타이핑 중인지 확인
             const isTyping = document.activeElement === lyricsInput;
-            
-            // 타이핑 중이 아니라면 포인터의 '다음/이전' 버튼(방향키, PageUp/Down)을 감지하여 
-            // 즉시 전체화면을 실행합니다.
             if (!isTyping) {
                 if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                     e.preventDefault();

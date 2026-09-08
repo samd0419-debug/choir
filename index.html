@@ -116,6 +116,7 @@
             border-radius: 8px;
             font-family: 'Malgun Gothic', sans-serif;
             z-index: 10000;
+            cursor: pointer;
         }
 
         #slide-text {
@@ -149,9 +150,9 @@
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     
     <p class="description">
-        <b>[포인터 조작 팁 🕹️]</b><br>
-        • <b>'이전' 버튼 길게:</b> 전체화면 종료 (나가기)<br>
-        • <b>'다음' 버튼 길게:</b> 첫 화면(표지)으로 즉시 이동
+        <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
+        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 넘기기 버튼을 누르면 전체화면으로 재시작됩니다.<br>
+        <b>[포인터 길게 누르기 🕹️]</b> <b>다음:</b> 전체화면 종료(나가기) / <b>이전:</b> 첫 화면 (브라우저 정책상 화면 꺼짐)
     </p>
 
     <div class="controls">
@@ -365,12 +366,10 @@
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                 e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
             } else if (e.key === 'Escape') { 
-                exitPresentation(); 
-            } 
-            // 💡 핵심 기능: 포인터의 '다음'을 길게 눌렀을 때 보내는 신호를 잡아채서 '첫 화면'으로!
-            else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
+                goToFirstSlide(); 
+            } else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
                 e.preventDefault();
-                goToFirstSlide();
+                exitPresentation();
             }
         } 
         else {
@@ -388,7 +387,8 @@
         if (!document.fullscreenElement && presentationMode.style.display === 'flex') { exitPresentation(); }
     });
 
-    function saveLyrics() {
+    // 💡 핵심 기능 수정: PC에서 폴더를 지정할 수 있는 고급 저장 기능 추가 (async 함수로 변경)
+    async function saveLyrics() {
         const text = lyricsInput.value.trim();
         if (!text) { alert('저장할 가사가 없습니다.'); return; }
 
@@ -396,15 +396,38 @@
         firstLine = firstLine.replace(/[\/\\?%*:|"<>]/g, '');
         let fileName = firstLine ? firstLine + '.txt' : '호산나찬양대_가사.txt';
         
-        const file = new File([text], fileName, { type: 'text/plain' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // 1. 모바일 환경 (스마트폰/패드) - 카톡 등 앱으로 보내기(공유) 창 띄우기
+        if (navigator.canShare && /Mobi|Android/i.test(navigator.userAgent)) {
+            const file = new File([text], fileName, { type: 'text/plain' });
             navigator.share({
                 title: fileName,
                 files: [file]
             }).catch(err => console.log('공유 취소됨'));
         } 
+        // 2. 데스크톱(PC) 노트북 환경 - 최신 '다른 이름으로 저장' 폴더 창 띄우기
         else {
+            try {
+                // 크롬, 엣지 등 최신 브라우저에서는 파일 시스템 API를 호출하여 저장 폴더 창을 직접 엽니다!
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: fileName,
+                        types: [{
+                            description: '텍스트 파일',
+                            accept: {'text/plain': ['.txt']},
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(text);
+                    await writable.close();
+                    return; // 성공적으로 구글 드라이브에 저장 완료!
+                }
+            } catch (err) {
+                // 사용자가 폴더 창에서 '취소'를 누르거나 에러가 발생한 경우
+                if (err.name !== 'AbortError') console.error(err);
+                return;
+            }
+
+            // 위 최신 기능이 안 되는 구형 브라우저(예: 구버전 사파리)를 위한 예비 조치 (자동 다운로드)
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -424,6 +447,7 @@
             localStorage.setItem('hosannaLyrics', lyricsInput.value); 
         };
         reader.readAsText(file, "UTF-8");
+        // 연속으로 같은 파일을 부르기 위해 input 초기화
         event.target.value = '';
     }
 </script>

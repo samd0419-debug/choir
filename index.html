@@ -21,8 +21,6 @@
             border-radius: 10px; 
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        
-        /* 메인 표지 이미지 (앱 상단 배너용) */
         #app-banner {
             width: 100%;
             height: auto;
@@ -30,8 +28,7 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
-
-        h2 { color: #333; margin-top: 0; display: none; /* 이미지가 있으므로 기존 텍스트 제목은 숨김 */ }
+        h2 { color: #333; margin-top: 0; display: none; }
         .description { color: #666; margin-bottom: 20px; line-height: 1.5; }
         
         .controls {
@@ -95,15 +92,14 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
             user-select: none;
-            cursor: none; /* 마우스 포인트 숨김 */
+            cursor: none; 
         }
 
-        /* 💡 전체화면 시 나오는 표지 이미지 스타일 */
         #cover-image-fs {
             display: none;
             width: 100%;
             height: 100%;
-            object-fit: contain; /* 원본 비율을 유지하며 꽉 차게 */
+            object-fit: contain; 
             position: absolute;
             top: 0; left: 0;
             z-index: 1;
@@ -130,7 +126,7 @@
             width: 100%;
             padding: 0 40px; 
             box-sizing: border-box;
-            z-index: 2; /* 이미지 위로 올라오도록 설정 */
+            z-index: 2; 
         }
 
         #page-number {
@@ -149,13 +145,13 @@
 <body>
 
 <div id="edit-mode">
-    <!-- 💡 앱 실행 시 나타나는 메인 로고/배너 이미지 -->
     <img id="app-banner" src="메인2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     
     <p class="description">
-        <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
-        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 버튼을 누르면 다시 전체화면으로 시작됩니다.
+        <b>[포인터 조작 팁 🕹️]</b><br>
+        • <b>'이전' 버튼 길게:</b> 전체화면 종료 (나가기)<br>
+        • <b>'다음' 버튼 길게:</b> 첫 화면(표지)으로 즉시 이동
     </p>
 
     <div class="controls">
@@ -178,8 +174,6 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
-    
-    <!-- 💡 전체화면용 메인 표지 이미지 -->
     <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
     
     <div id="slide-text"></div>
@@ -247,7 +241,6 @@
         slides = text.split('\n').map(line => line.trim()).filter(line => line !== '');
         if (slides.length === 0) return;
 
-        // 💡 핵심 기능: 슬라이드 목록 맨 앞에 '커버 이미지'를 위한 특별한 신호를 넣습니다.
         slides.unshift('__COVER_IMAGE__');
 
         currentSlideIndex = 0; tapCount = 0; isSwiping = false;
@@ -269,24 +262,20 @@
         if (slides.length > 0) {
             const currentContent = slides[currentSlideIndex];
 
-            // 1. 현재 화면이 표지 이미지일 때
             if (currentContent === '__COVER_IMAGE__') {
-                coverImageFS.style.display = 'block'; // 이미지 표시
-                slideText.style.display = 'none';     // 가사 숨김
-                pageNumber.style.display = 'none';    // 페이지 번호 숨김
-            } 
-            // 2. 현재 화면이 가사일 때
-            else {
-                coverImageFS.style.display = 'none';  // 이미지 숨김
-                slideText.style.display = 'block';    // 가사 표시
-                pageNumber.style.display = 'block';   // 페이지 번호 표시
+                coverImageFS.style.display = 'block'; 
+                slideText.style.display = 'none';     
+                pageNumber.style.display = 'none';    
+            } else {
+                coverImageFS.style.display = 'none';  
+                slideText.style.display = 'block';    
+                pageNumber.style.display = 'block';   
 
                 let safeText = escapeHtml(currentContent);
                 safeText = safeText.replace(/\/\//g, '<br>');
                 safeText = safeText.replace(/_/g, '&nbsp;');
                 slideText.innerHTML = safeText;
 
-                // 커버 이미지를 제외하고 실제 가사의 페이지 번호를 계산합니다.
                 pageNumber.innerText = currentSlideIndex + " / " + (slides.length - 1);
             }
         }
@@ -377,6 +366,11 @@
                 e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
             } else if (e.key === 'Escape') { 
                 exitPresentation(); 
+            } 
+            // 💡 핵심 기능: 포인터의 '다음'을 길게 눌렀을 때 보내는 신호를 잡아채서 '첫 화면'으로!
+            else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
+                e.preventDefault();
+                goToFirstSlide();
             }
         } 
         else {

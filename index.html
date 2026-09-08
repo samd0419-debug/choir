@@ -151,8 +151,7 @@
     
     <p class="description">
         <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
-        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 넘기기 버튼을 누르면 전체화면으로 재시작됩니다.<br>
-        <b>[포인터 길게 누르기 🕹️]</b> <b>다음:</b> 전체화면 종료(나가기) / <b>이전:</b> 첫 화면 (브라우저 정책상 화면 꺼짐)
+        <b>[포인터 길게 누르기 🕹️]</b> <b>이전 버튼:</b> 전체화면 종료(나가기) / <b>다음 버튼:</b> 첫 화면(표지)으로 이동
     </p>
 
     <div class="controls">
@@ -166,7 +165,7 @@
     
     <div class="btn-group">
         <button class="btn btn-play" onclick="startPresentation()">▶️ 전체화면 시작</button>
-        <button class="btn btn-save" onclick="saveLyrics()">📥 텍스트 저장 / 공유</button>
+        <button class="btn btn-save" onclick="saveLyrics()">💾 파일로 저장</button>
         <button class="btn btn-load" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
     </div>
     
@@ -365,11 +364,15 @@
                 e.preventDefault(); if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                 e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
-            } else if (e.key === 'Escape') { 
-                goToFirstSlide(); 
-            } else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
+            } 
+            // 💡 1. '이전' 버튼 길게 누르기 (ESC) -> 깔끔하게 종료(나가기)만 수행
+            else if (e.key === 'Escape') { 
+                exitPresentation(); 
+            } 
+            // 💡 2. '다음' 버튼 길게 누르기 (B, F5 등) -> 첫 화면(표지)으로 이동!
+            else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
                 e.preventDefault();
-                exitPresentation();
+                goToFirstSlide();
             }
         } 
         else {
@@ -387,7 +390,7 @@
         if (!document.fullscreenElement && presentationMode.style.display === 'flex') { exitPresentation(); }
     });
 
-    // 💡 핵심 기능 수정: PC에서 폴더를 지정할 수 있는 고급 저장 기능 추가 (async 함수로 변경)
+    // 💡 3. 저장 로직 수정: PC에서는 무조건 '내 컴퓨터 폴더 창'이 열리도록 강제 설정
     async function saveLyrics() {
         const text = lyricsInput.value.trim();
         if (!text) { alert('저장할 가사가 없습니다.'); return; }
@@ -396,18 +399,20 @@
         firstLine = firstLine.replace(/[\/\\?%*:|"<>]/g, '');
         let fileName = firstLine ? firstLine + '.txt' : '호산나찬양대_가사.txt';
         
-        // 1. 모바일 환경 (스마트폰/패드) - 카톡 등 앱으로 보내기(공유) 창 띄우기
-        if (navigator.canShare && /Mobi|Android/i.test(navigator.userAgent)) {
+        // 현재 기기가 모바일(스마트폰/태블릿)인지 확인
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // 모바일 기기일 때만 '공유하기' 창 띄우기
+        if (isMobile && navigator.canShare && navigator.canShare({ files: [new File([text], fileName, { type: 'text/plain' })] })) {
             const file = new File([text], fileName, { type: 'text/plain' });
             navigator.share({
                 title: fileName,
                 files: [file]
             }).catch(err => console.log('공유 취소됨'));
         } 
-        // 2. 데스크톱(PC) 노트북 환경 - 최신 '다른 이름으로 저장' 폴더 창 띄우기
+        // 💡 윈도우 노트북/PC일 때는 무조건 '폴더 저장 창' 띄우기
         else {
             try {
-                // 크롬, 엣지 등 최신 브라우저에서는 파일 시스템 API를 호출하여 저장 폴더 창을 직접 엽니다!
                 if (window.showSaveFilePicker) {
                     const handle = await window.showSaveFilePicker({
                         suggestedName: fileName,
@@ -419,15 +424,13 @@
                     const writable = await handle.createWritable();
                     await writable.write(text);
                     await writable.close();
-                    return; // 성공적으로 구글 드라이브에 저장 완료!
+                    return; 
                 }
             } catch (err) {
-                // 사용자가 폴더 창에서 '취소'를 누르거나 에러가 발생한 경우
                 if (err.name !== 'AbortError') console.error(err);
                 return;
             }
 
-            // 위 최신 기능이 안 되는 구형 브라우저(예: 구버전 사파리)를 위한 예비 조치 (자동 다운로드)
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -447,7 +450,6 @@
             localStorage.setItem('hosannaLyrics', lyricsInput.value); 
         };
         reader.readAsText(file, "UTF-8");
-        // 연속으로 같은 파일을 부르기 위해 input 초기화
         event.target.value = '';
     }
 </script>

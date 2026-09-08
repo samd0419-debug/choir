@@ -44,6 +44,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             resize: vertical;
+            background-color: #fffff8; /* 자동 저장되는 느낌을 주는 따뜻한 배경색 */
         }
         
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -64,34 +65,31 @@
         .btn-load:hover { background-color: #fb8c00; }
         
         #file-input { display: none; }
+        #save-status { margin-left: 10px; font-size: 14px; color: #2196F3; font-weight: bold; }
 
         /* 전체화면(프리젠테이션) 모드 스타일 */
         #presentation-mode {
             display: none;
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: black; color: white;
-            
             flex-direction: column;
             justify-content: center; 
             align-items: center;
-            
             font-weight: bold;
             line-height: 1.4;
             z-index: 9999;
             padding: 50px;
             box-sizing: border-box;
-            
             user-select: none;
             cursor: pointer;
         }
 
-        /* 스마트폰용 종료 버튼 */
         #exit-btn {
             position: absolute;
             top: 30px;
             right: 40px;
             font-size: 20px;
-            color: rgba(255, 255, 255, 0.3); /* 시선을 뺏지 않게 반투명 */
+            color: rgba(255, 255, 255, 0.3); 
             background: rgba(255, 255, 255, 0.1);
             padding: 10px 15px;
             border-radius: 8px;
@@ -124,23 +122,22 @@
 <div id="edit-mode">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     <p class="description">
-        <b>[엔터]</b>: 새 화면으로 넘김 (강제 줄바꿈: <b>//</b>, 단어 묶기: <b>_</b>)<br>
-        <b>[모바일 조작]</b> 좌우/상하 스와이프 지원, 상단 <b>[✖ 종료]</b> 버튼 지원<br>
-        <b>[터치 조작]</b> <b>1번</b> 탭: 다음 / <b>2번 다닥!</b>: 이전 / <b>3번 다다닥!</b>: 처음으로<br>
-        <b>[PC 조작]</b> 무선 포인터, 마우스 휠, <b>ESC</b>(종료), <b>+ / -</b> (글자 크기 조절)
+        <b>[자동 저장 중 💾]</b> 글자를 쓰면 앱을 꺼도 기기가 스스로 기억합니다!<br>
+        <b>[스마트폰 공유]</b> 저장 버튼을 누르면 카톡이나 구글 드라이브 앱으로 바로 보낼 수 있습니다.
     </p>
 
     <div class="controls">
         <label for="font-size-slider"><b>🔍 글자 크기:</b></label>
         <input type="range" id="font-size-slider" min="3" max="15" value="8" step="0.5" oninput="updateFontSizeLabel()">
         <span id="font-size-label">8 (기본)</span>
+        <span id="save-status"></span>
     </div>
     
     <textarea id="lyrics-input" placeholder="260908_은혜 (첫 줄은 파일명으로 저장됩니다)&#13;&#10;&#13;&#10;내가 웃을 수 있는 건&#13;&#10;그의_눈물_때문이요"></textarea>
     
     <div class="btn-group">
         <button class="btn btn-play" onclick="startPresentation()">▶️ 전체화면 시작</button>
-        <button class="btn btn-save" onclick="saveLyrics()">💾 텍스트로 저장</button>
+        <button class="btn btn-save" onclick="saveLyrics()">📥 텍스트 저장 / 공유</button>
         <button class="btn btn-load" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
     </div>
     
@@ -148,7 +145,6 @@
 </div>
 
 <div id="presentation-mode">
-    <!-- 모바일에서 앱을 끄지 않고 빠져나갈 수 있는 종료 버튼 -->
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
     <div id="slide-text"></div>
     <div id="page-number"></div>
@@ -159,16 +155,9 @@
     let currentSlideIndex = 0;
     let currentFontSize = 8; 
     let wheelCooldown = false; 
-    
-    // 탭 감지용 변수
     let tapCount = 0;
     let tapTimeout;
-
-    // 스와이프 감지용 변수
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchEndX = 0;
-    let touchEndY = 0;
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
     let isSwiping = false;
     
     const editMode = document.getElementById('edit-mode');
@@ -178,6 +167,23 @@
     const lyricsInput = document.getElementById('lyrics-input');
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeLabel = document.getElementById('font-size-label');
+    const saveStatus = document.getElementById('save-status');
+
+    // --- 💡 핵심 기능 1: 실시간 자동 저장 ---
+    // 창을 열었을 때 기기에 기억된 가사가 있으면 불러옵니다.
+    window.onload = function() {
+        const savedLyrics = localStorage.getItem('hosannaLyrics');
+        if (savedLyrics) {
+            lyricsInput.value = savedLyrics;
+        }
+    };
+
+    // 글자를 칠 때마다 실시간으로 기기에 저장합니다.
+    lyricsInput.addEventListener('input', function() {
+        localStorage.setItem('hosannaLyrics', lyricsInput.value);
+        saveStatus.innerText = "✓ 자동 저장됨";
+        setTimeout(() => { saveStatus.innerText = ""; }, 2000); // 2초 뒤 알림 숨김
+    });
 
     function updateFontSizeLabel() {
         currentFontSize = parseFloat(fontSizeSlider.value);
@@ -189,37 +195,24 @@
     }
 
     function goToFirstSlide() {
-        if (slides.length > 0) {
-            currentSlideIndex = 0;
-            updateSlide();
-        }
+        if (slides.length > 0) { currentSlideIndex = 0; updateSlide(); }
     }
 
     function startPresentation() {
         const text = lyricsInput.value.trim();
-        if (!text) {
-            alert('가사를 입력해주세요.');
-            return;
-        }
+        if (!text) { alert('가사를 입력해주세요.'); return; }
         
         slides = text.split('\n').map(line => line.trim()).filter(line => line !== '');
-        
-        if (slides.length === 0) {
-            alert('유효한 가사가 없습니다.');
-            return;
-        }
+        if (slides.length === 0) return;
 
-        currentSlideIndex = 0;
-        tapCount = 0; 
-        isSwiping = false;
-        
+        currentSlideIndex = 0; tapCount = 0; isSwiping = false;
         currentFontSize = parseFloat(fontSizeSlider.value);
         slideText.style.fontSize = currentFontSize + 'vw';
 
         editMode.style.display = 'none';
         presentationMode.style.display = 'flex';
         updateSlide();
-
+        
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(err => console.log("전체화면 지원 안 됨"));
         }
@@ -231,14 +224,12 @@
             safeText = safeText.replace(/\/\//g, '<br>');
             safeText = safeText.replace(/_/g, '&nbsp;');
             slideText.innerHTML = safeText;
-
             pageNumber.innerText = (currentSlideIndex + 1) + " / " + slides.length;
         }
     }
 
-    // 종료 버튼(또는 ESC키)을 누르면 편집 화면으로 복귀하는 함수
     function exitPresentation(e) {
-        if(e) e.stopPropagation(); // 버튼 클릭 시 화면 넘기기가 작동하지 않도록 방지
+        if(e) e.stopPropagation(); 
         presentationMode.style.display = 'none';
         editMode.style.display = 'block';
         if (document.fullscreenElement) {
@@ -246,7 +237,7 @@
         }
     }
 
-    // --- 📱 터치 스와이프 기능 ---
+    // --- 스와이프 및 터치 로직 (이전과 동일) ---
     presentationMode.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -266,147 +257,95 @@
         
         if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
             isSwiping = true; 
-            
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                if (deltaX < 0) {
-                    if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
-                } else {
-                    if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
-                }
-            } 
-            else {
-                if (deltaY < 0) {
-                    if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
-                } else {
-                    if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
-                }
+                if (deltaX < 0) { if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); } } 
+                else { if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); } }
+            } else {
+                if (deltaY < 0) { if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); } } 
+                else { if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); } }
             }
         }
     }
 
-    // --- 🖱️ 마우스 클릭 & 탭 기능 ---
     presentationMode.addEventListener('click', (e) => {
-        if (isSwiping) {
-            isSwiping = false;
-            return;
-        }
-
+        if (isSwiping) { isSwiping = false; return; }
         tapCount++;
-        
         if (tapCount === 1) {
             tapTimeout = setTimeout(() => {
-                if (currentSlideIndex < slides.length - 1) {
-                    currentSlideIndex++;
-                    updateSlide();
-                }
+                if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
                 tapCount = 0; 
             }, 300); 
-        } 
-        else if (tapCount === 2) {
+        } else if (tapCount === 2) {
             clearTimeout(tapTimeout);
             tapTimeout = setTimeout(() => {
-                if (currentSlideIndex > 0) {
-                    currentSlideIndex--;
-                    updateSlide();
-                }
+                if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
                 tapCount = 0; 
             }, 300);
-        } 
-        else if (tapCount >= 3) {
+        } else if (tapCount >= 3) {
             clearTimeout(tapTimeout);
-            goToFirstSlide();
-            tapCount = 0; 
+            goToFirstSlide(); tapCount = 0; 
         }
     });
 
-    presentationMode.addEventListener('contextmenu', (e) => {
-        e.preventDefault(); 
-    });
+    presentationMode.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 
-    // --- 마우스 휠 이벤트 ---
     presentationMode.addEventListener('wheel', (e) => {
         if (wheelCooldown) return;
         wheelCooldown = true;
-        
-        if (e.deltaY > 0) {
-            if (currentSlideIndex < slides.length - 1) {
-                currentSlideIndex++;
-                updateSlide();
-            }
-        } else if (e.deltaY < 0) {
-            if (currentSlideIndex > 0) {
-                currentSlideIndex--;
-                updateSlide();
-            }
-        }
-        
+        if (e.deltaY > 0) { if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); } } 
+        else if (e.deltaY < 0) { if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); } }
         setTimeout(() => { wheelCooldown = false; }, 200); 
     });
 
-    // --- 키보드 및 무선 포인터 이벤트 ---
     document.addEventListener('keydown', (e) => {
         if (presentationMode.style.display === 'flex') {
             if (e.key === '+' || e.key === '=') {
                 if (currentFontSize < 15) currentFontSize += 0.5;
                 slideText.style.fontSize = currentFontSize + 'vw';
-                fontSizeSlider.value = currentFontSize;
-                updateFontSizeLabel();
-            }
-            else if (e.key === '-' || e.key === '_') {
+                fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
+            } else if (e.key === '-' || e.key === '_') {
                 if (currentFontSize > 3) currentFontSize -= 0.5;
                 slideText.style.fontSize = currentFontSize + 'vw';
-                fontSizeSlider.value = currentFontSize;
-                updateFontSizeLabel();
-            }
-            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault(); 
-                if (currentSlideIndex < slides.length - 1) {
-                    currentSlideIndex++;
-                    updateSlide();
-                }
-            }
-            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
-                e.preventDefault(); 
-                if (currentSlideIndex > 0) {
-                    currentSlideIndex--;
-                    updateSlide();
-                }
-            }
-            else if (e.key === 'Escape') {
-                exitPresentation(); // ESC 누르면 빠져나오기
-            }
+                fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault(); if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
+            } else if (e.key === 'Escape') { exitPresentation(); }
         }
     });
 
     document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement && presentationMode.style.display === 'flex') {
-            exitPresentation();
-        }
+        if (!document.fullscreenElement && presentationMode.style.display === 'flex') { exitPresentation(); }
     });
 
-    // --- 새롭게 업데이트된 파일 저장 기능 (첫 줄 자동 파일명 추출) ---
+    // --- 💡 핵심 기능 2: 스마트 공유 및 저장 (버그 우회) ---
     function saveLyrics() {
         const text = lyricsInput.value.trim();
-        if (!text) {
-            alert('저장할 가사가 없습니다.');
-            return;
-        }
+        if (!text) { alert('저장할 가사가 없습니다.'); return; }
 
-        // 전체 가사 중 엔터(\n)를 기준으로 자른 뒤, 가장 첫 번째 줄만 가져옵니다.
         let firstLine = text.split('\n')[0].trim();
-        
-        // 파일 이름으로 쓸 수 없는 특수문자(\, /, :, *, ?, ", <, >, |)를 안전하게 없애줍니다.
         firstLine = firstLine.replace(/[\/\\?%*:|"<>]/g, '');
-
-        // 만약 첫 줄이 비어있다면 '호산나찬양대_가사.txt'를 기본으로 쓰고, 아니면 첫 줄을 파일명으로 씁니다.
         let fileName = firstLine ? firstLine + '.txt' : '호산나찬양대_가사.txt';
+        
+        const file = new File([text], fileName, { type: 'text/plain' });
 
-        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName; // 똑똑하게 만든 파일명을 적용!
-        a.click();
-        URL.revokeObjectURL(a.href);
+        // 아이폰/아이패드 환경이면 에러나는 '파일' 앱 대신 '공유하기' 창을 띄워버립니다!
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+                title: fileName,
+                files: [file]
+            }).catch(err => console.log('공유 취소됨'));
+        } 
+        // 데스크톱(PC) 환경에서는 기존처럼 파일로 바로 다운로드합니다.
+        else {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
     }
 
     function loadLyrics(event) {
@@ -416,6 +355,8 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             lyricsInput.value = e.target.result;
+            // 불러온 내용도 즉시 기기에 자동 저장
+            localStorage.setItem('hosannaLyrics', lyricsInput.value); 
         };
         reader.readAsText(file, "UTF-8");
         event.target.value = '';

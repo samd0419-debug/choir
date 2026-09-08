@@ -2,6 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <!-- 💡 핵심 수정: 아이폰 노치 및 안전 여백을 무시하고 화면 끝까지 꽉 채우는 코드 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <title>호산나 찬양대 프리젠터</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
     
@@ -10,6 +13,7 @@
             font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
             padding: 30px; 
             background-color: #f4f4f9;
+            margin: 0; /* 기본 여백 제거 */
         }
         #edit-mode { 
             max-width: 800px; 
@@ -44,7 +48,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             resize: vertical;
-            background-color: #fffff8; /* 자동 저장되는 느낌을 주는 따뜻한 배경색 */
+            background-color: #fffff8; 
         }
         
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -70,7 +74,10 @@
         /* 전체화면(프리젠테이션) 모드 스타일 */
         #presentation-mode {
             display: none;
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; 
+            /* 화면 상하좌우를 빈틈없이 당겨서 채움 */
+            top: 0; left: 0; right: 0; bottom: 0; 
+            width: 100%; height: 100%;
             background-color: black; color: white;
             flex-direction: column;
             justify-content: center; 
@@ -78,7 +85,8 @@
             font-weight: bold;
             line-height: 1.4;
             z-index: 9999;
-            padding: 50px;
+            /* 아이폰 안전 여백까지 꽉 차도록 패딩 조정 */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
             user-select: none;
             cursor: pointer;
@@ -86,8 +94,8 @@
 
         #exit-btn {
             position: absolute;
-            top: 30px;
-            right: 40px;
+            top: max(30px, env(safe-area-inset-top));
+            right: max(40px, env(safe-area-inset-right));
             font-size: 20px;
             color: rgba(255, 255, 255, 0.3); 
             background: rgba(255, 255, 255, 0.1);
@@ -103,12 +111,14 @@
             overflow-wrap: break-word;
             text-wrap: balance; 
             width: 100%;
+            padding: 0 40px; /* 글자가 노치에 가려지지 않게 좌우 여백 확보 */
+            box-sizing: border-box;
         }
 
         #page-number {
             position: absolute;
-            bottom: 30px;
-            right: 40px;
+            bottom: max(30px, env(safe-area-inset-bottom));
+            right: max(40px, env(safe-area-inset-right));
             font-size: 24px;
             color: rgba(255, 255, 255, 0.3);
             font-weight: normal;
@@ -123,7 +133,7 @@
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     <p class="description">
         <b>[자동 저장 중 💾]</b> 글자를 쓰면 앱을 꺼도 기기가 스스로 기억합니다!<br>
-        <b>[스마트폰 공유]</b> 저장 버튼을 누르면 카톡이나 구글 드라이브 앱으로 바로 보낼 수 있습니다.
+        <b>[스마트폰 공유]</b> 저장 버튼을 누르면 카톡이나 파일 앱으로 바로 보낼 수 있습니다.
     </p>
 
     <div class="controls">
@@ -169,8 +179,6 @@
     const fontSizeLabel = document.getElementById('font-size-label');
     const saveStatus = document.getElementById('save-status');
 
-    // --- 💡 핵심 기능 1: 실시간 자동 저장 ---
-    // 창을 열었을 때 기기에 기억된 가사가 있으면 불러옵니다.
     window.onload = function() {
         const savedLyrics = localStorage.getItem('hosannaLyrics');
         if (savedLyrics) {
@@ -178,11 +186,10 @@
         }
     };
 
-    // 글자를 칠 때마다 실시간으로 기기에 저장합니다.
     lyricsInput.addEventListener('input', function() {
         localStorage.setItem('hosannaLyrics', lyricsInput.value);
         saveStatus.innerText = "✓ 자동 저장됨";
-        setTimeout(() => { saveStatus.innerText = ""; }, 2000); // 2초 뒤 알림 숨김
+        setTimeout(() => { saveStatus.innerText = ""; }, 2000);
     });
 
     function updateFontSizeLabel() {
@@ -209,6 +216,9 @@
         currentFontSize = parseFloat(fontSizeSlider.value);
         slideText.style.fontSize = currentFontSize + 'vw';
 
+        // 폰의 뒷 배경색이 테두리에 비치지 않게 전체 배경을 검은색으로 강제 고정
+        document.body.style.backgroundColor = 'black'; 
+
         editMode.style.display = 'none';
         presentationMode.style.display = 'flex';
         updateSlide();
@@ -232,12 +242,12 @@
         if(e) e.stopPropagation(); 
         presentationMode.style.display = 'none';
         editMode.style.display = 'block';
+        document.body.style.backgroundColor = '#f4f4f9'; // 원래 폰트/배경색으로 복귀
         if (document.fullscreenElement) {
             document.exitFullscreen().catch(err => console.log(err));
         }
     }
 
-    // --- 스와이프 및 터치 로직 (이전과 동일) ---
     presentationMode.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -319,7 +329,6 @@
         if (!document.fullscreenElement && presentationMode.style.display === 'flex') { exitPresentation(); }
     });
 
-    // --- 💡 핵심 기능 2: 스마트 공유 및 저장 (버그 우회) ---
     function saveLyrics() {
         const text = lyricsInput.value.trim();
         if (!text) { alert('저장할 가사가 없습니다.'); return; }
@@ -330,14 +339,12 @@
         
         const file = new File([text], fileName, { type: 'text/plain' });
 
-        // 아이폰/아이패드 환경이면 에러나는 '파일' 앱 대신 '공유하기' 창을 띄워버립니다!
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             navigator.share({
                 title: fileName,
                 files: [file]
             }).catch(err => console.log('공유 취소됨'));
         } 
-        // 데스크톱(PC) 환경에서는 기존처럼 파일로 바로 다운로드합니다.
         else {
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
@@ -355,7 +362,6 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             lyricsInput.value = e.target.result;
-            // 불러온 내용도 즉시 기기에 자동 저장
             localStorage.setItem('hosannaLyrics', lyricsInput.value); 
         };
         reader.readAsText(file, "UTF-8");

@@ -2,9 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <!-- 💡 핵심 수정: 아이폰 노치 및 안전 여백을 무시하고 화면 끝까지 꽉 채우는 코드 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <title>호산나 찬양대 프리젠터</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
     
@@ -13,7 +11,7 @@
             font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
             padding: 30px; 
             background-color: #f4f4f9;
-            margin: 0; /* 기본 여백 제거 */
+            margin: 0; 
         }
         #edit-mode { 
             max-width: 800px; 
@@ -71,11 +69,10 @@
         #file-input { display: none; }
         #save-status { margin-left: 10px; font-size: 14px; color: #2196F3; font-weight: bold; }
 
-        /* 전체화면(프리젠테이션) 모드 스타일 */
+        /* 전체화면 모드 스타일 */
         #presentation-mode {
             display: none;
             position: fixed; 
-            /* 화면 상하좌우를 빈틈없이 당겨서 채움 */
             top: 0; left: 0; right: 0; bottom: 0; 
             width: 100%; height: 100%;
             background-color: black; color: white;
@@ -85,7 +82,6 @@
             font-weight: bold;
             line-height: 1.4;
             z-index: 9999;
-            /* 아이폰 안전 여백까지 꽉 차도록 패딩 조정 */
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
             user-select: none;
@@ -111,7 +107,7 @@
             overflow-wrap: break-word;
             text-wrap: balance; 
             width: 100%;
-            padding: 0 40px; /* 글자가 노치에 가려지지 않게 좌우 여백 확보 */
+            padding: 0 40px; 
             box-sizing: border-box;
         }
 
@@ -132,8 +128,8 @@
 <div id="edit-mode">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     <p class="description">
-        <b>[자동 저장 중 💾]</b> 글자를 쓰면 앱을 꺼도 기기가 스스로 기억합니다!<br>
-        <b>[스마트폰 공유]</b> 저장 버튼을 누르면 카톡이나 파일 앱으로 바로 보낼 수 있습니다.
+        <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
+        <b>[포인터 재시작 기능]</b> 화면 밖으로 튕겨 나갔을 때, 포인터 버튼을 누르면 <b>다시 전체화면으로 시작</b>됩니다.
     </p>
 
     <div class="controls">
@@ -179,22 +175,33 @@
     const fontSizeLabel = document.getElementById('font-size-label');
     const saveStatus = document.getElementById('save-status');
 
+    // --- 앱 시작 시 가사와 폰트 크기 불러오기 ---
     window.onload = function() {
         const savedLyrics = localStorage.getItem('hosannaLyrics');
         if (savedLyrics) {
             lyricsInput.value = savedLyrics;
         }
+        
+        // 💡 새 기능: 저장된 폰트 크기 불러오기
+        const savedFontSize = localStorage.getItem('hosannaFontSize');
+        if (savedFontSize) {
+            currentFontSize = parseFloat(savedFontSize);
+            fontSizeSlider.value = currentFontSize;
+            fontSizeLabel.innerText = currentFontSize;
+        }
     };
 
     lyricsInput.addEventListener('input', function() {
         localStorage.setItem('hosannaLyrics', lyricsInput.value);
-        saveStatus.innerText = "✓ 자동 저장됨";
+        saveStatus.innerText = "✓ 가사 자동 저장됨";
         setTimeout(() => { saveStatus.innerText = ""; }, 2000);
     });
 
+    // 💡 새 기능: 폰트 크기가 변경될 때마다 자동 저장
     function updateFontSizeLabel() {
         currentFontSize = parseFloat(fontSizeSlider.value);
         fontSizeLabel.innerText = currentFontSize;
+        localStorage.setItem('hosannaFontSize', currentFontSize); // 기기에 영구 기억
     }
 
     function escapeHtml(text) {
@@ -216,7 +223,6 @@
         currentFontSize = parseFloat(fontSizeSlider.value);
         slideText.style.fontSize = currentFontSize + 'vw';
 
-        // 폰의 뒷 배경색이 테두리에 비치지 않게 전체 배경을 검은색으로 강제 고정
         document.body.style.backgroundColor = 'black'; 
 
         editMode.style.display = 'none';
@@ -242,12 +248,13 @@
         if(e) e.stopPropagation(); 
         presentationMode.style.display = 'none';
         editMode.style.display = 'block';
-        document.body.style.backgroundColor = '#f4f4f9'; // 원래 폰트/배경색으로 복귀
+        document.body.style.backgroundColor = '#f4f4f9'; 
         if (document.fullscreenElement) {
             document.exitFullscreen().catch(err => console.log(err));
         }
     }
 
+    // --- 스와이프 및 마우스 로직 ---
     presentationMode.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -307,7 +314,9 @@
         setTimeout(() => { wheelCooldown = false; }, 200); 
     });
 
+    // --- 💡 핵심 기능: 키보드 & 무선 포인터 동작 업그레이드 ---
     document.addEventListener('keydown', (e) => {
+        // 1. 전체 화면 실행 중일 때
         if (presentationMode.style.display === 'flex') {
             if (e.key === '+' || e.key === '=') {
                 if (currentFontSize < 15) currentFontSize += 0.5;
@@ -321,7 +330,23 @@
                 e.preventDefault(); if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                 e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
-            } else if (e.key === 'Escape') { exitPresentation(); }
+            } else if (e.key === 'Escape') { 
+                exitPresentation(); 
+            }
+        } 
+        // 2. 전체 화면이 꺼져있는(편집) 상태일 때 포인터 재시작 기능!
+        else {
+            // 현재 사용자가 글자 입력창(textarea)을 클릭해서 타이핑 중인지 확인
+            const isTyping = document.activeElement === lyricsInput;
+            
+            // 타이핑 중이 아니라면 포인터의 '다음/이전' 버튼(방향키, PageUp/Down)을 감지하여 
+            // 즉시 전체화면을 실행합니다.
+            if (!isTyping) {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                    e.preventDefault();
+                    startPresentation();
+                }
+            }
         }
     });
 

@@ -65,8 +65,6 @@
             border: none;
             border-radius: 5px;
             color: white;
-            flex-grow: 1; /* 모바일에서 버튼들이 꽉 차게 보이도록 설정 */
-            text-align: center;
         }
         .btn-play { background-color: #4CAF50; }
         .btn-play:hover { background-color: #45a049; }
@@ -75,13 +73,10 @@
         .btn-load { background-color: #ff9800; }
         .btn-load:hover { background-color: #fb8c00; }
         
-        /* 💡 드라이브 전용 버튼 스타일 추가 */
-        .btn-drive { background-color: #9c27b0; }
-        .btn-drive:hover { background-color: #7b1fa2; }
-        
         #file-input { display: none; }
         #save-status { margin-left: 10px; font-size: 14px; color: #2196F3; font-weight: bold; }
 
+        /* 전체화면 모드 스타일 */
         #presentation-mode {
             display: none;
             position: fixed; 
@@ -151,12 +146,12 @@
 <body>
 
 <div id="edit-mode">
-    <img id="app-banner" src="메인2_2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
+    <img id="app-banner" src="메인2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     
     <p class="description">
         <b>[자동 기억 기능 💾]</b> 가사 내용과 <b>폰트 크기</b>가 자동으로 기기에 저장됩니다.<br>
-        <b>[포인터 길게 누르기 🕹️]</b> <b>이전:</b> 전체화면 종료 / <b>다음:</b> 표지로 이동
+        <b>[포인터 길게 누르기 🕹️]</b> <b>이전 버튼:</b> 전체화면 종료(나가기) / <b>다음 버튼:</b> 첫 화면(표지)으로 이동
     </p>
 
     <div class="controls">
@@ -172,9 +167,6 @@
         <button class="btn btn-play" onclick="startPresentation()">▶️ 전체화면 시작</button>
         <button class="btn btn-save" onclick="saveLyrics()">💾 파일로 저장</button>
         <button class="btn btn-load" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
-        
-        <!-- 💡 공유된 구글 드라이브 폴더로 바로 이동하는 버튼 추가 -->
-        <button class="btn btn-drive" onclick="window.open('https://drive.google.com/drive/folders/1kcSJOPCvx8w7hhGagYKrpOgAcQXef678?usp=drive_link', '_blank')">☁️ 공유 폴더 열기</button>
     </div>
     
     <input type="file" id="file-input" accept=".txt" onchange="loadLyrics(event)">
@@ -182,7 +174,10 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
-    <img id="cover-image-fs" src="메인2_2.jpg" alt="호산나 찬양대 표지 화면">
+    
+    <!-- 전체화면 시 표시되는 표지 이미지 -->
+    <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
+    
     <div id="slide-text"></div>
     <div id="page-number"></div>
 </div>
@@ -403,6 +398,7 @@
         firstLine = firstLine.replace(/[\/\\?%*:|"<>]/g, '');
         let fileName = firstLine ? firstLine + '.txt' : '호산나찬양대_가사.txt';
         
+        // 아이폰/모바일 환경 체크 (PC와 모바일 완벽 호환)
         const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {

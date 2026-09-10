@@ -174,6 +174,8 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
+    
+    <!-- 전체화면 시 표시되는 표지 이미지 -->
     <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
     
     <div id="slide-text"></div>
@@ -365,11 +367,9 @@
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
                 e.preventDefault(); if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
             } 
-            // 💡 1. '이전' 버튼 길게 누르기 (ESC) -> 깔끔하게 종료(나가기)만 수행
             else if (e.key === 'Escape') { 
                 exitPresentation(); 
             } 
-            // 💡 2. '다음' 버튼 길게 누르기 (B, F5 등) -> 첫 화면(표지)으로 이동!
             else if (e.key.toLowerCase() === 'b' || e.key === '.' || e.key === 'F5' || e.key === 'Home') {
                 e.preventDefault();
                 goToFirstSlide();
@@ -390,7 +390,6 @@
         if (!document.fullscreenElement && presentationMode.style.display === 'flex') { exitPresentation(); }
     });
 
-    // 💡 3. 저장 로직 수정: PC에서는 무조건 '내 컴퓨터 폴더 창'이 열리도록 강제 설정
     async function saveLyrics() {
         const text = lyricsInput.value.trim();
         if (!text) { alert('저장할 가사가 없습니다.'); return; }
@@ -399,45 +398,51 @@
         firstLine = firstLine.replace(/[\/\\?%*:|"<>]/g, '');
         let fileName = firstLine ? firstLine + '.txt' : '호산나찬양대_가사.txt';
         
-        // 현재 기기가 모바일(스마트폰/태블릿)인지 확인
+        // 아이폰/모바일 환경 체크 (PC와 모바일 완벽 호환)
         const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // 모바일 기기일 때만 '공유하기' 창 띄우기
-        if (isMobile && navigator.canShare && navigator.canShare({ files: [new File([text], fileName, { type: 'text/plain' })] })) {
-            const file = new File([text], fileName, { type: 'text/plain' });
-            navigator.share({
-                title: fileName,
-                files: [file]
-            }).catch(err => console.log('공유 취소됨'));
-        } 
-        // 💡 윈도우 노트북/PC일 때는 무조건 '폴더 저장 창' 띄우기
-        else {
-            try {
-                if (window.showSaveFilePicker) {
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: fileName,
-                        types: [{
-                            description: '텍스트 파일',
-                            accept: {'text/plain': ['.txt']},
-                        }],
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(text);
-                    await writable.close();
-                    return; 
-                }
-            } catch (err) {
-                if (err.name !== 'AbortError') console.error(err);
-                return;
-            }
-
+        if (isMobile) {
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = fileName;
             a.click();
             URL.revokeObjectURL(a.href);
+            return;
         }
+
+        try {
+            if (window.showSaveFilePicker) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{
+                        description: '텍스트 파일',
+                        accept: {'text/plain': ['.txt']},
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(text);
+                await writable.close();
+                return; 
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+            return;
+        }
+
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
     }
 
     function loadLyrics(event) {

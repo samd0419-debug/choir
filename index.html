@@ -185,7 +185,6 @@
 <body>
 
 <div id="edit-mode">
-    <!-- 💡 메인2.jpg 로 파일명 원복 -->
     <img id="app-banner" src="메인2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     
@@ -214,20 +213,20 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
-    <!-- 💡 표지 이미지도 메인2.jpg 로 파일명 원복 -->
     <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
     <div id="slide-text"></div>
     <div id="page-number"></div>
 </div>
 
-<!-- 💡 기능 요약 팝업(모달) 수정됨 -->
+<!-- 💡 기능 요약 팝업(모달) -->
 <div id="help-modal" onclick="this.style.display='none'">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="close-btn" onclick="document.getElementById('help-modal').style.display='none'">✖</div>
         <h3>💡 프리젠터 기능 요약 및 팁</h3>
         <ul>
             <li><b>조작 방법:</b> 마우스 휠, 방향키, 스페이스바, 스마트폰 스와이프로 화면을 즉시 넘깁니다.</li>
-            <li><b>글자 크기 (포인터):</b> 측면 <b>'엔터(Enter)' 버튼</b>을 누르면 커지고, <b>'탭(Tab)' 버튼</b>을 누르면 작아집니다. (즉각 반응합니다!)</li>
+            <!-- 💡 버튼 방향에 맞게 설명 수정 -->
+            <li><b>글자 크기 (포인터):</b> 측면 <b>'위쪽(Tab)' 버튼</b>을 누르면 커지고, <b>'아래쪽(Enter)' 버튼</b>을 누르면 작아집니다.</li>
             <li><b>터치 제어:</b> 화면을 한 번 탭하면 <b>다음</b>, 두 번 탭하면 <b>이전</b>, 세 번 탭하면 <b>첫 화면</b>으로 이동합니다.</li>
             <li><b>포인터 롱키:</b> 포인터의 이전 버튼(ESC)은 <b>'화면 종료'</b>, 다음 버튼(B, F5)은 <b>'첫 표지로 이동'</b>합니다.</li>
             <li><b>자동 기억 & 스마트 저장:</b> 입력 내용 자동 저장 및 모바일/PC 환경을 감지하여 안전하게 저장합니다.</li>
@@ -429,8 +428,8 @@
                 if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
             } 
             
-            // 💡 엔터(Enter) 키로 폰트 확대 (즉각 반응)
-            else if (key === 'Enter') {
+            // 💡 위쪽(Tab) 키로 폰트 확대 (즉각 반응)
+            else if (key === 'Tab') {
                 e.preventDefault();
                 if (currentFontSize < 15) {
                     currentFontSize += 0.5;
@@ -438,8 +437,8 @@
                     fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
                 }
             }
-            // 💡 탭(Tab) 키로 폰트 축소 (즉각 반응 & 포커스 이동 방지)
-            else if (key === 'Tab') {
+            // 💡 아래쪽(Enter) 키로 폰트 축소 (즉각 반응)
+            else if (key === 'Enter') {
                 e.preventDefault();
                 if (currentFontSize > 3) {
                     currentFontSize -= 0.5;

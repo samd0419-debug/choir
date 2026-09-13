@@ -185,6 +185,7 @@
 <body>
 
 <div id="edit-mode">
+    <!-- 💡 메인2.jpg 로 파일명 원복 -->
     <img id="app-banner" src="메인2.jpg" alt="호산나 찬양대 메인 이미지" onerror="this.style.display='none';">
     <h2>🎵 호산나 찬양대 프리젠터</h2>
     
@@ -213,19 +214,20 @@
 
 <div id="presentation-mode">
     <div id="exit-btn" onclick="exitPresentation(event)" ontouchstart="event.stopPropagation()">✖ 종료</div>
+    <!-- 💡 표지 이미지도 메인2.jpg 로 파일명 원복 -->
     <img id="cover-image-fs" src="메인2.jpg" alt="호산나 찬양대 표지 화면">
     <div id="slide-text"></div>
     <div id="page-number"></div>
 </div>
 
-<!-- 💡 기능 요약 팝업(모달) -->
+<!-- 💡 기능 요약 팝업(모달) 수정됨 -->
 <div id="help-modal" onclick="this.style.display='none'">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="close-btn" onclick="document.getElementById('help-modal').style.display='none'">✖</div>
         <h3>💡 프리젠터 기능 요약 및 팁</h3>
         <ul>
             <li><b>조작 방법:</b> 마우스 휠, 방향키, 스페이스바, 스마트폰 스와이프로 화면을 즉시 넘깁니다.</li>
-            <li><b>글자 크기 (포인터):</b> 측면 <b>'엔터(Enter)' 버튼을 1번</b> 누르면 커지고, <b>2번 다닥!</b> 누르면 작아집니다. (화면 넘김과 꼬이지 않습니다!)</li>
+            <li><b>글자 크기 (포인터):</b> 측면 <b>'엔터(Enter)' 버튼</b>을 누르면 커지고, <b>'탭(Tab)' 버튼</b>을 누르면 작아집니다. (즉각 반응합니다!)</li>
             <li><b>터치 제어:</b> 화면을 한 번 탭하면 <b>다음</b>, 두 번 탭하면 <b>이전</b>, 세 번 탭하면 <b>첫 화면</b>으로 이동합니다.</li>
             <li><b>포인터 롱키:</b> 포인터의 이전 버튼(ESC)은 <b>'화면 종료'</b>, 다음 버튼(B, F5)은 <b>'첫 표지로 이동'</b>합니다.</li>
             <li><b>자동 기억 & 스마트 저장:</b> 입력 내용 자동 저장 및 모바일/PC 환경을 감지하여 안전하게 저장합니다.</li>
@@ -242,10 +244,6 @@
     let tapTimeout;
     let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
     let isSwiping = false;
-    
-    // 💡 엔터키(폰트 조절 전용) 감지를 위한 변수
-    let enterKeyCount = 0;
-    let enterKeyTimeout;
 
     const editMode = document.getElementById('edit-mode');
     const presentationMode = document.getElementById('presentation-mode');
@@ -301,7 +299,6 @@
         slides.unshift('__COVER_IMAGE__');
 
         currentSlideIndex = 0; tapCount = 0; isSwiping = false;
-        enterKeyCount = 0;
 
         currentFontSize = parseFloat(fontSizeSlider.value);
         slideText.style.fontSize = currentFontSize + 'vw';
@@ -423,7 +420,7 @@
                 fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
             } 
             
-            // 💡 화면 넘김 단축키 (Enter 제외, 누르는 즉시 반응)
+            // 화면 넘김 단축키 (즉각 반응)
             else if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(key)) {
                 e.preventDefault();
                 if (currentSlideIndex < slides.length - 1) { currentSlideIndex++; updateSlide(); }
@@ -432,30 +429,22 @@
                 if (currentSlideIndex > 0) { currentSlideIndex--; updateSlide(); }
             } 
             
-            // 💡 측면 엔터키 폰트 제어 (1번: 크게, 2번: 작게)
+            // 💡 엔터(Enter) 키로 폰트 확대 (즉각 반응)
             else if (key === 'Enter') {
                 e.preventDefault();
-                enterKeyCount++;
-                
-                if (enterKeyCount === 1) {
-                    enterKeyTimeout = setTimeout(() => {
-                        // 1번만 누르고 0.25초가 지나면 폰트 확대
-                        if (currentFontSize < 15) {
-                            currentFontSize += 0.5;
-                            slideText.style.fontSize = currentFontSize + 'vw';
-                            fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
-                        }
-                        enterKeyCount = 0;
-                    }, 250);
-                } else if (enterKeyCount >= 2) {
-                    // 0.25초 안에 2번 눌리면 확대를 취소하고 폰트 축소
-                    clearTimeout(enterKeyTimeout);
-                    if (currentFontSize > 3) {
-                        currentFontSize -= 0.5;
-                        slideText.style.fontSize = currentFontSize + 'vw';
-                        fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
-                    }
-                    enterKeyCount = 0;
+                if (currentFontSize < 15) {
+                    currentFontSize += 0.5;
+                    slideText.style.fontSize = currentFontSize + 'vw';
+                    fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
+                }
+            }
+            // 💡 탭(Tab) 키로 폰트 축소 (즉각 반응 & 포커스 이동 방지)
+            else if (key === 'Tab') {
+                e.preventDefault();
+                if (currentFontSize > 3) {
+                    currentFontSize -= 0.5;
+                    slideText.style.fontSize = currentFontSize + 'vw';
+                    fontSizeSlider.value = currentFontSize; updateFontSizeLabel();
                 }
             }
             
@@ -470,7 +459,7 @@
         else {
             const isTyping = document.activeElement === lyricsInput;
             if (!isTyping) {
-                // 편집 모드에서는 엔터키(Enter)가 줄바꿈용으로 쓰이므로 놔두고, 메인 키보드만 감지합니다.
+                // 편집 모드에서는 메인 키보드만 감지합니다. 
                 if (['ArrowRight', 'ArrowDown', 'PageDown', 'ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
                     e.preventDefault();
                     startPresentation();
